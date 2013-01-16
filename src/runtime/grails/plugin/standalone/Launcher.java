@@ -16,6 +16,7 @@ package grails.plugin.standalone;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 
 import org.apache.catalina.LifecycleException;
@@ -71,6 +72,9 @@ public class Launcher extends AbstractLauncher {
 			keystorePath = args[4];
 			keystorePassword = args[5];
 		}
+		
+		int killswitchPort = argToNumber(new String[] {System.getProperty("killswitch.port")}, 0, 0);
+		System.out.println("DEBUG: killswitchPort: " + killswitchPort);
 
 		boolean usingUserKeystore;
 		File keystoreFile;
@@ -90,7 +94,7 @@ public class Launcher extends AbstractLauncher {
 		Tomcat tomcat = configureTomcat(tomcatDir, contextPath, exploded, host, port,
 				httpsPort, keystoreFile, keystorePassword, usingUserKeystore);
 
-		startKillSwitchThread(tomcat, port);
+		if (killswitchPort > 0) startKillSwitchThread(tomcat, host, killswitchPort);
 
 		startTomcat(tomcat, host, port, contextPath, httpsPort > 0 ? httpsPort : null);
 	}
@@ -134,16 +138,16 @@ public class Launcher extends AbstractLauncher {
 		return tomcat;
 	}
 
-	protected void startKillSwitchThread(final Tomcat tomcat, final int serverPort) {
+	protected void startKillSwitchThread(final Tomcat tomcat, final String host, final int killswitchPort) {
 		new Thread() {
 			@Override
 			public void run() {
-				int killListenerPort = serverPort + 1;
-				ServerSocket serverSocket = createKillSwitch(killListenerPort);
+				ServerSocket serverSocket = createKillSwitch(host, killswitchPort);
 				if (serverSocket != null) {
 					try {
 						serverSocket.accept();
 						try {
+						    System.out.println("Killswitch triggered. Stopping Tomcat...");
 							tomcat.stop();
 						}
 						catch (LifecycleException e) {
@@ -218,9 +222,9 @@ public class Launcher extends AbstractLauncher {
 		tomcat.setConnector(connector);
 	}
 
-	protected ServerSocket createKillSwitch(int killListenerPort) {
+	protected ServerSocket createKillSwitch(String host, int killListenerPort) {
 		try {
-			return new ServerSocket(killListenerPort);
+			return new ServerSocket(killListenerPort, 0, InetAddress.getByName(host));
 		}
 		catch (IOException e) {
 			return null;
