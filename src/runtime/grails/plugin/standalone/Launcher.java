@@ -53,7 +53,7 @@ public class Launcher extends AbstractLauncher {
 
 		File workDir = new File(System.getProperty("java.io.tmpdir"));
 		String contextPath = "";
-		if (args.length > 0) {
+		if (args.length > 0 && !"ROOT".equals(args[0])) {
 			contextPath = args[0];
 		}
 		if (hasLength(contextPath) && !contextPath.startsWith("/")) {
@@ -74,7 +74,6 @@ public class Launcher extends AbstractLauncher {
 		}
 		
 		int killswitchPort = argToNumber(new String[] {System.getProperty("killswitch.port")}, 0, 0);
-		System.out.println("DEBUG: killswitchPort: " + killswitchPort);
 
 		boolean usingUserKeystore;
 		File keystoreFile;
@@ -97,6 +96,7 @@ public class Launcher extends AbstractLauncher {
 		if (killswitchPort > 0) startKillSwitchThread(tomcat, host, killswitchPort);
 
 		startTomcat(tomcat, host, port, contextPath, httpsPort > 0 ? httpsPort : null);
+		tomcat.getServer().await();
 	}
 
 	protected Tomcat configureTomcat(File tomcatDir, String contextPath, File exploded,
