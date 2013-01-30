@@ -14,7 +14,7 @@
  */
 class StandaloneGrailsPlugin {
 
-	String version = '1.1.1'
+	String version = '1.1.2'
 	String grailsVersion = '1.3 > *'
 	def scopes = [excludes: 'war']
 	List pluginExcludes = [
@@ -26,10 +26,12 @@ class StandaloneGrailsPlugin {
 	String authorEmail = 'beckwithb@vmware.com'
 	String title = 'Standalone App Runner'
 	String description = 'Runs a Grails application as a JAR file with an embedded Tomcat or Jetty server'
+	/*
 	String documentation = 'http://grails-plugins.github.com/grails-standalone/'
 
 	String license = 'APACHE'
 	def organization = [name: 'SpringSource', url: 'http://www.springsource.org/']
 	def issueManagement = [system: 'JIRA', url: 'http://jira.grails.org/browse/GPSTANDALONE']
 	def scm = [url: 'https://github.com/grails-plugins/grails-standalone']
+	*/
 }
