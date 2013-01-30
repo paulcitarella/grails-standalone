@@ -14,6 +14,7 @@
  */
 class StandaloneGrailsPlugin {
 
+    def groupId = "com.synapsegroupinc.grails.plugins"
 	String version = '1.1.2'
 	String grailsVersion = '1.3 > *'
 	def scopes = [excludes: 'war']
