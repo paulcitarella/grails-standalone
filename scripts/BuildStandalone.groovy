@@ -46,7 +46,7 @@ target(buildStandalone: 'Build a standalone app with embedded server') {
 		}
 
 		String jarname = argsMap.params[0]
-		File jar = jarname ? new File(jarname).absoluteFile : new File(workDir.parentFile, 'standalone-' + grailsAppVersion + '.jar').absoluteFile
+		File jar = jarname ? new File(jarname).absoluteFile : new File(workDir.parentFile, "${grailsAppName}-${grailsAppVersion}.jar").absoluteFile
 
 		boolean jetty = argsMap.jetty
 
@@ -75,8 +75,10 @@ target(buildStandalone: 'Build a standalone app with embedded server') {
 		if (!workDir.deleteDir()) {
 			event 'StatusError', ["Unable to delete $workDir"]
 		}
+		
+		buildScripts()
 
-		event 'StatusUpdate', ["Built $jar.path"]
+		event 'StatusUpdate', ["Built ${grailsAppName}-${grailsAppVersion}.zip"]
 	}
 	catch (e) {
 		GrailsUtil.deepSanitize e
@@ -221,6 +223,78 @@ calculateTomcatDependencies = { ->
 	}
 
 	deps
+}
+
+buildScripts = {
+    def targetDir = "${basedir}/target"
+    def fileName = "${grailsAppName}-${grailsAppVersion}"
+    
+    new File("${targetDir}/run.sh").setText("""#!/bin/sh
+        |
+        |# Startup script for ${grailsAppName} standalone deployment
+        |
+        |HOST="${config.grails.plugin.standalone.host}"
+        |HTTP_PORT="${config.grails.plugin.standalone.httpPort}"
+        |SSL_PORT="${config.grails.plugin.standalone.httpsPort}"
+        |CONTEXT_ROOT="${config.grails.plugin.standalone.contextRoot}"
+        |KEYSTORE="lib/${grails.util.Environment.current.name}.jks"
+        |STOREPASS="${config.grails.plugin.standalone.keyStorePass}"
+        |JVM_ARGS="-Djava.io.tmpdir=.${grailsAppName}-internal ${config.grails.plugin.standalone.jvmArgs} -Dtomcat.nio=true -Djavax.net.ssl.keyStore=\${PWD}/lib/${grails.util.Environment.current.name}.jks -Djavax.net.ssl.keyStorePassword=${config.grails.plugin.standalone.keyStorePass} -Djavax.net.ssl.trustStore=\${PWD}/lib/${grails.util.Environment.current.name}.jks -Djavax.net.ssl.trustStorePassword=${config.grails.plugin.standalone.keyStorePass}"
+        |
+        |#JVM_ARGS="\$JVM_ARGS -Dkillswitch.port=9000"
+        |
+        |if [ -d .${grailsAppName}-internal ] ; then
+        |  rm -rf .${grailsAppName}-internal
+        |fi
+        |mkdir .${grailsAppName}-internal
+        |
+        |SVR_ARGS="\$CONTEXT_ROOT \$HOST \$HTTP_PORT"
+        |
+        |if [ -n "\$SSL_PORT" ] ; then
+        |  SVR_ARGS="\$SVR_ARGS \$SSL_PORT \$KEYSTORE \$STOREPASS"
+        |fi
+        |
+        |nohup java \$JVM_ARGS -jar lib/${fileName}.jar \$SVR_ARGS > logfile 2>&1 &
+        |echo \$! > .${grailsAppName}-internal/${grailsAppName}.pid
+        |
+        |echo "${grailsAppName} started."
+        |""".stripMargin())
+    
+    new File("${targetDir}/stop.sh").setText("""#!/bin/sh
+        |
+        |# Stop script for ${grailsAppName} standalone deployment
+        |
+        |if [ -f .${grailsAppName}-internal/${grailsAppName}.pid ]; then
+        |  kill -9 `cat .${grailsAppName}-internal/${grailsAppName}.pid`
+        |  rm -f .${grailsAppName}-internal/${grailsAppName}.pid
+        |  echo "${grailsAppName} stopped."
+        |else
+        |  echo "PID file not found. App may not be running."
+        |fi
+        |""".stripMargin())
+    
+    ant.zip(destfile:"${targetDir}/${fileName}.zip") {
+        zipfileset(dir:targetDir, prefix:"${fileName}/lib") {
+            include name: "*.jar"
+        }
+        zipfileset(dir:targetDir, filemode:"755", prefix:fileName) {
+            include name: "*.sh"
+        }
+        zipfileset(dir:basedir, prefix:fileName) {
+            include name: "Readme.*"
+        }
+        zipfileset(dir:"${basedir}/src/security", prefix:"${fileName}/lib") {
+            include name: "${grails.util.Environment.current.name}.jks"
+        }
+    }
+    
+    ant.delete() {
+        fileset(dir:targetDir) {
+            include name: "${fileName}.jar"
+            include name: "run.sh"
+            include name: "stop.sh"
+        }
+    }
 }
 
 setDefaultTarget buildStandalone
