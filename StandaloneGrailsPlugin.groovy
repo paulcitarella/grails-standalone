@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 class StandaloneGrailsPlugin {
-
+	def version = "1.1.4"
     def groupId = "com.synapsegroupinc.grails.plugins"
-	String version = '1.1.2'
-	String grailsVersion = '1.3 > *'
+	String grailsVersion = '1.2 > *'
 	def scopes = [excludes: 'war']
 	List pluginExcludes = [
 		'docs/**',
